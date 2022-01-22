@@ -3,6 +3,8 @@ package com.padma.spring.files.upload.db.service;
 import java.io.File;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,17 +22,16 @@ public class FileStorageService {
   @Autowired
   private FileDBRepository fileDBRepository;
 
-  public FileDB store(MultipartFile file,String authorName) throws IOException, NoSuchAlgorithmException {
+  public FileDB store(MultipartFile file,String authorName,String fileHashCode) throws IOException, NoSuchAlgorithmException {
     String fileName = StringUtils.cleanPath(file.getOriginalFilename());
 
-    GetFileCheckSum gfcs = new GetFileCheckSum();
 
-    String fileHashCode = gfcs.checksum( new File(  file.getOriginalFilename()));
+    FileDB fileDB = new FileDB(fileName, file.getContentType(), file.getBytes(),fileHashCode,authorName);
 
-    FileDB FileDB = new FileDB(fileName, file.getContentType(), file.getBytes(),fileHashCode,authorName);
+    return fileDBRepository.save(fileDB);
 
-    return fileDBRepository.save(FileDB);
   }
+  
 
   public FileDB getFile(String id) {
     return fileDBRepository.findById(id).get();
@@ -39,4 +40,5 @@ public class FileStorageService {
   public Stream<FileDB> getAllFiles() {
     return fileDBRepository.findAll().stream();
   }
+
 }

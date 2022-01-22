@@ -1,10 +1,14 @@
 package com.padma.spring.files.upload.db.controller;
 
+import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.padma.spring.files.upload.db.message.ResponceFileForDupe;
 import com.padma.spring.files.upload.db.message.ResponseMessage;
+import com.padma.spring.files.upload.db.service.FileDupeCheck;
 import com.padma.spring.files.upload.db.service.FileStorageService;
+import com.padma.spring.files.upload.db.utils.GetFileCheckSum;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -32,10 +36,27 @@ public class FileController {
   public ResponseEntity<ResponseMessage> uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("author") String authorName) {
     String message = "";
     try {
-      storageService.store(file,authorName);
 
-      message = "Uploaded the file successfully: " + file.getOriginalFilename() + " -  Author" + authorName;
+      GetFileCheckSum gfcs = new GetFileCheckSum();
+      String fileHashCode = gfcs.checksum( new File(  file.getOriginalFilename()));
+      List<ResponceFileForDupe> files = storageService.getAllFiles().map(dbFile -> new ResponceFileForDupe(
+              dbFile.getName(),
+              dbFile.getHashCode(),
+              dbFile.getAuthorName())).collect(Collectors.toList());
+
+      List< ResponceFileForDupe > dbList =  files.stream().filter(p-> p.getHasCode().equalsIgnoreCase(fileHashCode) && p.getAuthorName().equalsIgnoreCase(authorName))
+              .collect(Collectors.toList());
+      System.out.println(dbList.stream().toArray().toString());
+
+      if(dbList.size()==0) {
+
+        storageService.store(file, authorName,fileHashCode);
+        message = "Uploaded the file  successfully : " + file.getOriginalFilename() + " -  Author : " + authorName ;
+        return ResponseEntity.status(HttpStatus.OK).body(new ResponseMessage(message));
+     }
+     message = "Uploaded the file : " + file.getOriginalFilename() + " -  Author : " + authorName + " duplicated ";
       return ResponseEntity.status(HttpStatus.OK).body(new ResponseMessage(message));
+      
     } catch (Exception e) {
       message =    "Could not upload the file: " + file.getOriginalFilename() + " -  Author " + authorName + "!";
 
